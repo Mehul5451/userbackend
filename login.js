@@ -16,23 +16,9 @@ const Admin = mongoose.model("Admin", adminSchema);
 // =============================
 
 
-const ticketSchema = new mongoose.Schema({
-  ticketType: { type: String, required: true },
-  price: { type: Number, required: true, min: 0 },
-});
 
-const eventSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true },
-  date: { type: Date, required: true },
-  time: { type: String, required: true },
-  location: { type: String, required: true, trim: true },
-  description: { type: String, required: true, trim: true },
-  djs: { type: [String], required: true },
-  tickets: { type: [ticketSchema], required: true },
-  imageUrl: { type: String, default: null },
-});
 
-const Event = mongoose.model("Event", eventSchema);
+
 
 
 
@@ -71,5 +57,5 @@ const DJ = mongoose.model("DJ", djSchema);
 
 // const Booking = mongoose.model("Booking", bookingSchema);
 
-module.exports = { Admin , Event ,DJ};
+module.exports = { Admin  ,DJ};
 
