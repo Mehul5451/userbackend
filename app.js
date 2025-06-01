@@ -11,7 +11,7 @@ const cookieParser = require("cookie-parser");
 require("./conn");
 
 const { Userdata, djBooking , ticketBooking  } = require("./register");
-const { Admin, Event , DJ} = require("./login");
+const { Admin, Event, DJ } = require("./login");
 //const {Event} = require("../adminlogin/login");
 
 
