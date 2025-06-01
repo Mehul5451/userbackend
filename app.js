@@ -6,10 +6,12 @@ const port = process.env.PORT || 3000;
 const bcrypt = require("bcryptjs"); // For password hashing
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
+const cookieParser = require("cookie-parser");
 
 require("./conn");
 
 const { Userdata, djBooking , ticketBooking  , Event} = require("./register");
+const { Admin, Event , DJ} = require("./login");
 //const {Event} = require("../adminlogin/login");
 
 
@@ -26,7 +28,7 @@ const corsOptions = {
   origin: 'http://localhost:5173', // Allow only this origin
   credentials: true, // Allow credentials (cookies, etc.)
 };
-
+app.use(cookieParser())
 app.use(cors(corsOptions));
 
 
@@ -358,6 +360,165 @@ app.delete("/book-tickets/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Failed to delete ticket" });
   }
 });
+
+
+
+// ADMIN SIDE BACKEND
+
+app.post("/admin-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if the user exists
+    const user = await Admin.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Compare the password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+    // Create the JWT token
+    const adminToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Send the token in the response
+    res.status(200).json({ token: adminToken });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Auth Middleware
+const authMiddleware = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1]; // Get token from Authorization header
+
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized, token required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
+    const admin = await Admin.findById(decoded.userId);
+
+    if (!admin) {
+      return res.status(401).json({ message: "Unauthorized, admin not found" });
+    }
+
+    req.admin = admin; // Attach admin info to the request
+    next(); // Proceed to the next middleware/route handler
+  } catch (error) {
+    return res.status(403).json({ message: "Invalid or expired token" });
+  }
+};
+
+// Protected Admin Route
+app.get("/admin", authMiddleware, async (req, res) => {
+  res.status(200).json({ success: true, admin: req.admin });
+});
+// Admin Logout
+app.post("/admin-logout", async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+    });
+
+    res.status(200).json({ success: true, message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* =========================  
+   Event Management
+========================= */
+
+// Add Event
+app.post("/events", authMiddleware, async (req, res) => {
+  const { title, date, time, location, description, djs, tickets, imageUrl } = req.body;
+
+  // Validate fields
+  if (!title || !date || !time || !location || !description || !djs || !tickets) {
+    return res.status(400).json({ message: "Missing required event details" });
+  }
+
+  try {
+    const newEvent = new Event({ title, date, time, location, description, djs, tickets, imageUrl });
+    await newEvent.save();
+    res.status(201).json({ message: "Event added successfully", event: newEvent });
+  } catch (error) {
+    console.error("Error adding event:", error);
+    res.status(500).json({ message: "Error saving event" });
+  }
+});
+
+// Delete event
+app.delete("/events/:id", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find and delete the event by its ID
+    const event = await Event.findByIdAndDelete(id);
+
+    // If the event is not found
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    res.json({ message: "Event deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    res.status(500).json({ message: "Error deleting event" });
+  }
+});
+
+// Get Events
+app.get("/events", async (req, res) => {
+  try {
+    const events = await Event.find();
+    res.json(events);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching events" });
+  }
+});app.get("/dj", async (req, res) => {
+  try {
+    const djs = await DJ.find();
+    res.json(djs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post("/dj", async (req, res) => {
+  const { name, genre, location, price, rating } = req.body;
+  const newDJ = new DJ({ name, genre, location, price, rating });
+
+  try {
+    const savedDJ = await newDJ.save();
+    res.status(201).json(savedDJ);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete a DJ
+app.delete("/dj/:id", async (req, res) => {
+  try {
+    await DJ.findByIdAndDelete(req.params.id);
+    res.json({ message: "DJ deleted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+
 
 
 app.listen(port, () => {
