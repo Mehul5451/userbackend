@@ -10,8 +10,8 @@ const cookieParser = require("cookie-parser");
 
 require("./conn");
 
-const { Userdata, djBooking , ticketBooking  } = require("./register");
-const { Admin, Event, DJ } = require("./login");
+const { Userdata, djBooking , ticketBooking , Event } = require("./register");
+const { Admin , DJ } = require("./login");
 //const {Event} = require("../adminlogin/login");
 
 
