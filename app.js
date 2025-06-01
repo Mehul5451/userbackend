@@ -368,27 +368,18 @@ app.delete("/book-tickets/:id", authenticateToken, async (req, res) => {
 app.post("/admin-login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Check if the user exists
     const user = await Admin.findOne({ email });
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // Compare the password
+    if (!user) return res.status(404).json({ error: "Admin not found" });
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+    if (!isMatch) return res.status(401).json({ error: "Invalid admin credentials" });
 
-    // Create the JWT token
-    const adminToken = jwt.sign(
-      { userId: user._id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Add role for admin in token (optional)
+    const adminToken = jwt.sign({ userId: user._id, email: user.email, role: "admin" }, JWT_SECRET, { expiresIn: "1h" });
 
-    // Send the token in the response
-    res.status(200).json({ token: adminToken });
+    res.json({ success: true, message: "Admin login successful", token: adminToken });
   } catch (error) {
-    console.error("Error during login:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Admin login error:", error);
+    res.status(500).json({ error: "Error occurred during admin login" });
   }
 });
 
