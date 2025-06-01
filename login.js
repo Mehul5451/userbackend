@@ -22,6 +22,8 @@ const Admin = mongoose.model("Admin", adminSchema);
 
 
 
+
+
 const djSchema = new mongoose.Schema({
   name: { type: String, required: true },
   genre: { type: String, required: true },
