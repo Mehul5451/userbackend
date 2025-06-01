@@ -386,31 +386,32 @@ app.post("/admin-login", async (req, res) => {
 
 // Auth Middleware
 const authMiddleware = async (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1]; // Get token from Authorization header
-
-  if (!token) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Unauthorized, token required" });
   }
-
+  const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: Admin access required" });
+    }
     const admin = await Admin.findById(decoded.userId);
-
     if (!admin) {
       return res.status(401).json({ message: "Unauthorized, admin not found" });
     }
-
-    req.admin = admin; // Attach admin info to the request
-    next(); // Proceed to the next middleware/route handler
+    req.admin = admin;
+    next();
   } catch (error) {
     return res.status(403).json({ message: "Invalid or expired token" });
   }
 };
 
-// Protected Admin Route
-app.get("/admin", authMiddleware, async (req, res) => {
-  res.status(200).json({ success: true, admin: req.admin });
+// Protected admin route
+app.get("/admin", authMiddleware, (req, res) => {
+  res.json({ message: "Admin authorized", admin: req.admin });
 });
+
 // Admin Logout
 app.post("/admin-logout", async (req, res) => {
   try {
